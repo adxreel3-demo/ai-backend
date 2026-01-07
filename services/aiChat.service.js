@@ -7,9 +7,6 @@ const client = new OpenAI({
 
 /**
  * Generate AI response
- * - SYSTEM prompt enforces sales behavior
- * - Intent controls WHAT to answer
- * - State controls WHERE the conversation is
  */
 async function generateAIResponse({
   state,
@@ -19,6 +16,11 @@ async function generateAIResponse({
   intent,
   systemHint = ""
 }) {
+  // ✅ FORCE EVERYTHING TO STRING
+  const safeRagContext = typeof ragContext === "string" ? ragContext : "";
+  const safeUserMessage = typeof userMessage === "string" ? userMessage : "";
+  const safeSystemHint = typeof systemHint === "string" ? systemHint : "";
+
   const SYSTEM_PROMPT = `
 You are a PROFESSIONAL AI SALES ASSISTANT.
 
@@ -41,29 +43,30 @@ STRICT RULES (YOU MUST FOLLOW ALL):
 CURRENT CHAT STATE: ${state}
 CURRENT USER INTENT: ${intent}
 
-${systemHint}
+${safeSystemHint}
 
 ONLY use the information below:
-${ragContext}
+${safeRagContext}
 `;
+
+  // ✅ CLEAN HISTORY (NO NULLS)
+  const safeHistory = (history || [])
+    .filter(h => typeof h?.content === "string" && h.content.trim() !== "")
+    .map(h => ({
+      role: h.role === "user" ? "user" : "assistant",
+      content: h.content
+    }));
 
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-
-    // Conversation memory
-    ...history.map(h => ({
-      role: h.role === "user" ? "user" : "assistant",
-      content: h.content
-    })),
-
-    // Current user message
-    { role: "user", content: userMessage }
+    ...safeHistory,
+    { role: "user", content: safeUserMessage }
   ];
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",   // fast + stable
+    model: "gpt-4o-mini",
     messages,
-    temperature: 0.2        // low = less hallucination
+    temperature: 0.2
   });
 
   return response.choices[0].message.content;
@@ -72,4 +75,3 @@ ${ragContext}
 module.exports = {
   generateAIResponse
 };
-
