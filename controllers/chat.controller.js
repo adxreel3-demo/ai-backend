@@ -14,6 +14,10 @@ const CHAT_STATES = require("../services/chatState.constants");
 const { getNextState } = require("../services/chatState.service");
 
 const detectIntent = require("../services/intent.service");
+const { getHistory, saveHistory } = require("../memoryStore");
+
+// ✅ helper: detect DB availability
+const DB_ENABLED = !!process.env.DB_HOST;
 
 exports.sendMessage = async (req, res) => {
   try {
@@ -26,38 +30,48 @@ exports.sendMessage = async (req, res) => {
     }
 
     /* --------------------------------------------------
-       1️⃣ Load history FIRST (for context-aware intent)
+       1️⃣ Load history (DB → fallback memory)
     -------------------------------------------------- */
-    const history = await ChatMessageModel.getLastMessages(session_id, 6);
+    let history = [];
 
-    /* --------------------------------------------------
-       2️⃣ Detect intent (HYBRID + CONTEXT)
-    -------------------------------------------------- */
-    const intent = await detectIntent(message, history);
-    console.log("DETECTED INTENT:", intent);
-
-    /* --------------------------------------------------
-       3️⃣ Find or create session
-    -------------------------------------------------- */
-    let session = await ChatSessionModel.findBySessionId(session_id);
-
-    if (!session) {
-      const { rawCompany } =
-        rawLoader.loadByCampaignId(campaign_id);
-
-      await ChatSessionModel.create({
-        sessionId: session_id,
-        campaignId: campaign_id,
-        companyId: rawCompany.companyId || 1
-      });
-
-      session = await ChatSessionModel.findBySessionId(session_id);
+    if (DB_ENABLED) {
+      history = await ChatMessageModel.getLastMessages(session_id, 6);
+    } else {
+      history = getHistory(session_id);
     }
 
-    const currentState = session.current_state || CHAT_STATES.INIT;
+    /* --------------------------------------------------
+       2️⃣ Detect intent (context-aware)
+    -------------------------------------------------- */
+    const intent = await detectIntent(message, history);
 
     /* --------------------------------------------------
-       4️⃣ Load campaign data
+       3️⃣ Find or create session (DB only)
+    -------------------------------------------------- */
+    let session = null;
+
+    if (DB_ENABLED) {
+      session = await ChatSessionModel.findBySessionId(session_id);
+
+      if (!session) {
+        const { rawCompany } =
+          rawLoader.loadByCampaignId(campaign_id);
+
+        await ChatSessionModel.create({
+          sessionId: session_id,
+          campaignId: campaign_id,
+          companyId: rawCompany.companyId || 1
+        });
+
+        session = await ChatSessionModel.findBySessionId(session_id);
+      }
+    }
+
+    const currentState =
+      session?.current_state || CHAT_STATES.INIT;
+
+    /* --------------------------------------------------
+       4️⃣ Load campaign data (STATIC – SAFE)
     -------------------------------------------------- */
     const { rawCampaign, rawCompany, rawProducts } =
       rawLoader.loadByCampaignId(campaign_id);
@@ -79,14 +93,18 @@ exports.sendMessage = async (req, res) => {
     });
 
     /* --------------------------------------------------
-       6️⃣ Save USER message with intent
+       6️⃣ Save USER message
     -------------------------------------------------- */
-    await ChatMessageModel.save({
-      sessionId: session_id,
-      role: "user",
-      content: message,
-      intent
-    });
+    if (DB_ENABLED) {
+      await ChatMessageModel.save({
+        sessionId: session_id,
+        role: "user",
+        content: message,
+        intent
+      });
+    } else {
+      saveHistory(session_id, message, null);
+    }
 
     /* --------------------------------------------------
        7️⃣ Build RAG context
@@ -98,7 +116,7 @@ exports.sendMessage = async (req, res) => {
     });
 
     /* --------------------------------------------------
-       8️⃣ Create intent-based system hint
+       8️⃣ Intent-based system hint
     -------------------------------------------------- */
     let systemHint = "";
 
@@ -123,7 +141,7 @@ exports.sendMessage = async (req, res) => {
     }
 
     /* --------------------------------------------------
-       9️⃣ Generate AI reply (INTENT + STATE AWARE)
+       9️⃣ Generate AI reply
     -------------------------------------------------- */
     const reply = await generateAIResponse({
       state: nextState,
@@ -137,13 +155,17 @@ exports.sendMessage = async (req, res) => {
     /* --------------------------------------------------
        🔟 Save AI reply + update state
     -------------------------------------------------- */
-    await ChatMessageModel.save({
-      sessionId: session_id,
-      role: "assistant",
-      content: reply
-    });
+    if (DB_ENABLED) {
+      await ChatMessageModel.save({
+        sessionId: session_id,
+        role: "assistant",
+        content: reply
+      });
 
-    await ChatSessionModel.updateState(session_id, nextState);
+      await ChatSessionModel.updateState(session_id, nextState);
+    } else {
+      saveHistory(session_id, message, reply);
+    }
 
     res.json({ reply });
 
