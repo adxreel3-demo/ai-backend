@@ -1,0 +1,33 @@
+{
+  "status": 200,
+  "message": "Fetch Product successfully.",
+  "data": [
+    {
+      "id": 301,
+      "name": "Cotton Casual Top",
+      "description": "Soft cotton casual top ideal for daily wear",
+      "images": "https://example.com/products/cotton-top.jpg",
+      "regular_price": "699",
+      "market_price": "1299",
+      "isActive": 1
+    },
+    {
+      "id": 302,
+      "name": "Denim Jacket",
+      "description": "Stylish denim jacket for casual outings",
+      "images": "https://example.com/products/denim-jacket.jpg",
+      "regular_price": "1999",
+      "market_price": "3499",
+      "isActive": 1
+    },
+    {
+      "id": 303,
+      "name": "Floral Kurti",
+      "description": "Elegant floral kurti perfect for office and casual wear",
+      "images": "https://example.com/products/floral-kurti.jpg",
+      "regular_price": "899",
+      "market_price": "1599",
+      "isActive": 1
+    }
+  ]
+}

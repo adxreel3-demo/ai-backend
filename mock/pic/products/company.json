@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "message": "Fetch data successfully.",
+  "data": [
+    {
+      "id": 2001,
+      "name": "Urban Wear Trichy",
+      "email": "urbanwear.trichy@gmail.com",
+      "website": "instagram.com/urbanwear_trichy",
+      "location": "trichy, tamilnadu",
+      "phone": "9876543210",
+      "industry": "Fashion",
+      "about": "trendy casual and ethnic wear for women",
+      "button": "Shop Now",
+      "coverimage": "https://example.com/urbanwear-cover.jpg",
+      "profileimage": "https://example.com/urbanwear-logo.jpg",
+      "is_active": 1,
+      "createdby": 999001,
+      "createddate": "2025-01-10 10:30:00"
+    }
+  ]
+}
