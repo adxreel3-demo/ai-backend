@@ -39,6 +39,16 @@ STRICT RULES (YOU MUST FOLLOW ALL):
 - NEVER invent information.
 - After answering, ALWAYS ask ONE short sales follow-up question.
 - Be confident, clear, and sales-focused.
+- If the user says they are not interested, not buying, or wants to stop:
+  - Acknowledge politely
+  - Stop selling immediately
+  - Do NOT push products again
+  - Respond briefly and end the conversation naturally
+
+- If the user says "thank you", "no thanks", "later", or similar:
+  - Respect the decision
+  - Do NOT continue sales questions
+
 
 CURRENT CHAT STATE: ${state}
 CURRENT USER INTENT: ${intent}
@@ -75,3 +85,4 @@ ${safeRagContext}
 module.exports = {
   generateAIResponse
 };
+
